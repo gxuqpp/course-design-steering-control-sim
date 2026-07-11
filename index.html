@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汽车操纵稳定性仿真分析工具 · 二自由度模型</title>
+<style>
+  :root{
+    --bg:#EDF0F3; --panel:#FFFFFF; --ink:#1C2B36; --sub:#5B6B77; --line:#D7DEE4;
+    --blue:#0F5FA8; --deep:#14212B; --orange:#D95F18; --green:#1F8A5B; --purple:#7A4FA3;
+    --warnbg:#FFF4E5; --warnln:#E8B36A; --okbg:#EEF6F0;
+    --mono:Consolas,'SF Mono','JetBrains Mono','Courier New',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 18px 60px}
+  header{background:var(--deep);color:#E9EFF4;padding:22px 0 18px;border-bottom:4px solid var(--blue)}
+  header .wrap{padding-bottom:0}
+  .hrow{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:21px;font-weight:600;letter-spacing:.5px}
+  .badge{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:2px 9px;border-radius:3px}
+  .hsub{color:#9FB2C0;font-size:12.5px;margin-top:6px}
+  nav{display:flex;gap:2px;margin-top:16px;flex-wrap:wrap}
+  nav button{background:none;border:none;color:#9FB2C0;font-size:13.5px;padding:9px 15px;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit}
+  nav button:hover{color:#fff}
+  nav button.on{color:#fff;border-bottom-color:var(--orange);font-weight:600}
+  nav button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+  .tab{display:none;padding-top:20px}
+  .tab.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;margin-bottom:18px}
+  .card h2{font-size:15.5px;margin-bottom:4px;color:var(--deep)}
+  .card h2 .no{font-family:var(--mono);color:var(--blue);margin-right:8px;font-size:14px}
+  .card .desc{color:var(--sub);font-size:12.5px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px 16px}
+  .fld label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+  .fld input[type=number],.fld input[type=text],.fld select{
+    width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:4px;font-family:var(--mono);
+    font-size:13.5px;color:var(--ink);background:#FBFCFD}
+  .fld input:focus,.fld select:focus{outline:2px solid var(--blue);outline-offset:-1px;background:#fff}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .presets button,.act{background:var(--blue);color:#fff;border:none;border-radius:4px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:inherit}
+  .presets button.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue)}
+  .presets button:hover,.act:hover{filter:brightness(1.12)}
+  .act{margin-top:14px;padding:9px 26px;font-weight:600}
+  .radiorow{display:flex;gap:16px;align-items:center;font-size:13px;margin:2px 0 4px}
+  .radiorow label{cursor:pointer;color:var(--ink)}
+  .readouts{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:12px;margin-top:6px}
+  .ro{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:4px;padding:10px 12px;background:#FBFCFD}
+  .ro .k{font-size:11.5px;color:var(--sub);letter-spacing:.3px}
+  .ro .v{font-family:var(--mono);font-size:19px;margin-top:2px;color:var(--deep)}
+  .ro .v .u{font-size:12px;color:var(--sub);margin-left:5px}
+  .ro.hl{border-left-color:var(--orange)}
+  .note{background:var(--okbg);border:1px solid #BFD9C8;border-radius:4px;padding:10px 14px;font-size:12.5px;color:#26543A;margin-top:14px}
+  .warn{background:var(--warnbg);border:1px solid var(--warnln);border-radius:4px;padding:10px 14px;font-size:13px;color:#7A4E10;margin:10px 0}
+  .fig{border:1px solid var(--line);border-radius:6px;margin-top:16px;overflow:hidden;background:#fff}
+  .figbar{display:flex;justify-content:space-between;align-items:center;background:#F4F6F8;border-bottom:1px solid var(--line);padding:7px 12px}
+  .figbar .cap{font-size:12.5px;color:var(--deep);font-weight:600}
+  .figbar button{background:#fff;border:1px solid var(--blue);color:var(--blue);border-radius:4px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+  .figbar button:hover{background:var(--blue);color:#fff}
+  .fig canvas{display:block;width:100%;height:340px}
+  table.dt{border-collapse:collapse;width:100%;margin-top:12px;font-size:12.5px}
+  table.dt th,table.dt td{border:1px solid var(--line);padding:5px 10px;text-align:right;font-family:var(--mono)}
+  table.dt th{background:#F4F6F8;font-family:inherit;font-weight:600;text-align:center}
+  table.dt td:first-child{text-align:center}
+  .foot{color:var(--sub);font-size:12px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+  .formula{font-family:var(--mono);font-size:12.5px;background:#F4F6F8;border-radius:4px;padding:8px 12px;margin-top:10px;color:#3A4B58;overflow-x:auto;white-space:nowrap}
+  @media (max-width:640px){ .fig canvas{height:260px} h1{font-size:17px} }
+user-select: none
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="hrow"><h1>汽车操纵稳定性仿真分析工具</h1><span class="badge">2-DOF 线性二自由度模型</span><span class="badge">离线可用</span></div>
+    <div class="hsub">稳态特性 · 阶跃/正弦瞬态响应 · 频率特性与稳定裕度 · 阻尼比对比 —— 所有图形可下载 PNG 直接插入 Word</div>
+    <nav id="nav">
+      <button data-t="t1" class="on">① 车辆参数</button>
+      <button data-t="t2">② 稳态特性与特征参数</button>
+      <button data-t="t3">③ 瞬态响应仿真</button>
+      <button data-t="t4">④ 频率特性与稳定裕度</button>
+      <button data-t="t5">⑤ 阻尼比对比</button>
+    </nav>
+  </div>
+</header>
+<div class="wrap">
+
+<!-- ①参数 -->
+<section class="tab on" id="t1">
+  <div class="card">
+    <h2><span class="no">P</span>整车基本参数（所有参数均可任意修改）</h2>
+    <div class="desc">符号约定与《汽车理论》一致：k₁、k₂ 为前/后轴总侧偏刚度（两轮之和，取负值，N/rad）。修改参数后，切换到任意分析页会自动重新计算。</div>
+    <div class="presets">
+      <button onclick="loadPreset('p55')">输入参数</button>
+    </div>
+    <div class="grid">
+      <div class="fld"><label>整车质量 m (kg)</label><input type="number" id="p_m" value="1700" step="any"></div>
+      <div class="fld"><label>绕 Oz 轴转动惯量 I<sub>z</sub> (kg·m²)</label><input type="number" id="p_Iz" value="3700" step="any"></div>
+      <div class="fld"><label>轴距 L (m)</label><input type="number" id="p_L" value="3.2" step="any"></div>
+      <div class="fld"><label>前轴总侧偏刚度 k₁ (N/rad)</label><input type="number" id="p_k1" value="-60000" step="any"></div>
+      <div class="fld"><label>后轴总侧偏刚度 k₂ (N/rad)</label><input type="number" id="p_k2" value="-110000" step="any"></div>
+      <div class="fld"><label>转向系总传动比 i</label><input type="number" id="p_i" value="18" step="any"></div>
+      <div class="fld"><label>重力加速度 g (m/s²)</label><input type="number" id="p_g" value="9.8" step="any"></div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="radiorow">
+        <span style="color:var(--sub);font-size:12px">质心位置输入方式：</span>
+        <label><input type="radio" name="geo" value="ratio" checked onchange="geoMode()"> 前轴轴荷比 (%)</label>
+        <label><input type="radio" name="geo" value="a" onchange="geoMode()"> 质心到前轴距离 a (m)</label>
+      </div>
+      <div class="grid" style="margin-top:8px">
+        <div class="fld" id="f_ratio"><label>前轴轴荷比 (%)（前轴载荷/总重 = b/L）</label><input type="number" id="p_ratio" value="53.125" step="any"></div>
+        <div class="fld" id="f_a" style="display:none"><label>质心到前轴距离 a (m)</label><input type="number" id="p_a" value="1.5" step="any"></div>
+      </div>
+    </div>
+    <button class="act" onclick="showParamSummary()">确认参数并显示模型摘要</button>
+    <div id="psummary"></div>
+    <div class="note">模型：二自由度运动微分方程（教材式 10-1）整理为传递函数 G(s)=ω<sub>r</sub>(s)/δ(s)=(B₁s+B₀)/(s²+2ζω₀s+ω₀²)，δ 为前轮转角。本工具由状态方程严格推导系数，已修正教材中 c、b₀ 公式的排版笔误（教材程序中 c 表达式漏乘车速 u，b₀ 应为 Lk₁k₂ 而非 L²k₁k₂）；修正后稳态增益与《汽车理论》公式 ω<sub>r</sub>/δ = (u/L)/(1+Ku²) 严格一致。</div>
+  </div>
+</section>
+
+<!-- ②稳态 -->
+<section class="tab" id="t2">
+  <div class="card">
+    <h2><span class="no">A</span>计算条件（对应题 5-5 / 5-6 各小问）</h2>
+    <div class="grid">
+      <div class="fld"><label>转向灵敏度计算车速 u (m/s)</label><input type="number" id="s_u" value="22.35" step="any"></div>
+      <div class="fld"><label>侧向加速度 a<sub>y</sub> (×g)</label><input type="number" id="s_ay" value="0.4" step="any"></div>
+      <div class="fld"><label>原地转弯半径 R₀ (m)</label><input type="number" id="s_R0" value="15" step="any"></div>
+      <div class="fld"><label>瞬态特征参数计算车速 u (m/s)</label><input type="number" id="s_ut" value="30" step="any"></div>
+      <div class="fld"><label>质心侧偏角计算车速 u (m/s)</label><input type="number" id="s_ub" value="31.3" step="any"></div>
+      <div class="fld"><label>增益曲线车速上限 (m/s)</label><input type="number" id="s_umax" value="40" step="any"></div>
+    </div>
+    <button class="act" onclick="calcSteady()">计算</button>
+  </div>
+  <div id="s_out"></div>
+</section>
+
+<!-- ③瞬态 -->
+<section class="tab" id="t3">
+  <div class="card">
+    <h2><span class="no">B</span>前轮角阶跃 / 正弦输入下的瞬态时域响应</h2>
+    <div class="desc">对应教材实例 10：对二自由度模型作时域仿真（四阶龙格-库塔法直接积分运动微分方程），输出横摆角速度响应及瞬态品质指标。</div>
+    <div class="grid">
+      <div class="fld"><label>车速 u (m/s)</label><input type="number" id="d_u" value="30" step="any"></div>
+      <div class="fld"><label>输入角定义</label><select id="d_type"><option value="sw">转向盘转角（除以传动比 i）</option><option value="fw">前轮转角</option></select></div>
+      <div class="fld"><label>阶跃幅值 δ₀ (°)</label><input type="number" id="d_step" value="30" step="any"></div>
+      <div class="fld"><label>阶跃仿真时长 (s)</label><input type="number" id="d_Ts" value="6" step="any"></div>
+      <div class="fld"><label>正弦幅值 (°)</label><input type="number" id="d_samp" value="30" step="any"></div>
+      <div class="fld"><label>正弦频率 f (Hz)</label><input type="number" id="d_f" value="0.5" step="any"></div>
+      <div class="fld"><label>正弦仿真时长 (s)</label><input type="number" id="d_Tn" value="10" step="any"></div>
+      <div class="fld"><label>积分步长 dt (s)</label><input type="number" id="d_dt" value="0.001" step="any"></div>
+    </div>
+    <button class="act" onclick="calcTrans()">运行仿真</button>
+  </div>
+  <div id="d_out"></div>
+</section>
+
+<!-- ④频率 -->
+<section class="tab" id="t4">
+  <div class="card">
+    <h2><span class="no">C</span>频率响应特性 · 幅值裕度与相位裕度</h2>
+    <div class="desc">以前轮转角 δ 为输入、横摆角速度 ω<sub>r</sub> 为输出的开环传递函数 G(s)，绘制 Bode 图并按单位负反馈系统求穿越频率与稳定裕度。</div>
+    <div class="grid">
+      <div class="fld"><label>车速 u (m/s)</label><input type="number" id="q_u" value="30" step="any"></div>
+      <div class="fld"><label>频率下限 (rad/s)</label><input type="number" id="q_w1" value="0.01" step="any"></div>
+      <div class="fld"><label>频率上限 (rad/s)</label><input type="number" id="q_w2" value="1000" step="any"></div>
+    </div>
+    <button class="act" onclick="calcFreq()">计算频率特性</button>
+  </div>
+  <div id="q_out"></div>
+</section>
+
+<!-- ⑤阻尼比 -->
+<section class="tab" id="t5">
+  <div class="card">
+    <h2><span class="no">D</span>不同阻尼比对瞬态响应的影响</h2>
+    <div class="desc">保持当前参数计算出的 ω₀、B₁、B₀ 不变，人为设定阻尼比 ζ（可输入任意多个，用逗号分隔），比较阶跃与正弦输入下的横摆角速度响应（对应教材实例 10 的对比程序）。</div>
+    <div class="grid">
+      <div class="fld"><label>车速 u (m/s)</label><input type="number" id="z_u" value="20" step="any"></div>
+      <div class="fld"><label>阻尼比列表 ζ（逗号分隔）</label><input type="text" id="z_list" value="0.68, 0.78, 0.88"></div>
+      <div class="fld"><label>输入角定义</label><select id="z_type"><option value="sw">转向盘转角（除以传动比 i）</option><option value="fw">前轮转角</option></select></div>
+      <div class="fld"><label>阶跃幅值 δ₀ (°)</label><input type="number" id="z_step" value="30" step="any"></div>
+      <div class="fld"><label>阶跃仿真时长 (s)</label><input type="number" id="z_Ts" value="4" step="any"></div>
+      <div class="fld"><label>正弦幅值 (°)</label><input type="number" id="z_samp" value="30" step="any"></div>
+      <div class="fld"><label>正弦频率 f (Hz)</label><input type="number" id="z_f" value="0.5" step="any"></div>
+      <div class="fld"><label>正弦仿真时长 (s)</label><input type="number" id="z_Tn" value="8" step="any"></div>
+    </div>
+    <button class="act" onclick="calcZeta()">运行对比仿真</button>
+  </div>
+  <div id="z_out"></div>
+</section>
+
+<div class="foot">
+  计算模型：线性二自由度操纵稳定性模型（横摆角速度 ω<sub>r</sub>、质心侧偏角 β），等速行驶假设。
+  反应时间 τ 定义为阶跃输入后 ω<sub>r</sub> 首次达到稳态值的时间，峰值反应时间 ε 为首次到达峰值的时间，均由精确阶跃响应数值求得。
+  图形下载为高分辨率 PNG（白底），可直接插入 Word 文档。本工具完全离线运行，不依赖任何网络资源。
+</div>
+</div>
+<script>
+/* ===================== 数值与模型核心 ===================== */
+const $=id=>document.getElementById(id);
+function fmt(x,d=4){
+  if(!isFinite(x))return x>0?'∞':(x<0?'-∞':'—');
+  if(x===0)return '0';
+  const ax=Math.abs(x);
+  if(ax>=1e5||ax<1e-3)return x.toExponential(3);
+  return parseFloat(x.toPrecision(d)).toString();
+}
+function getParams(){
+  const p={m:+$('p_m').value, Iz:+$('p_Iz').value, L:+$('p_L').value,
+           k1:+$('p_k1').value, k2:+$('p_k2').value, i:+$('p_i').value, g:+$('p_g').value};
+  const mode=document.querySelector('input[name=geo]:checked').value;
+  if(mode==='ratio'){ const r=+$('p_ratio').value/100; p.b=r*p.L; p.a=p.L-p.b; }
+  else { p.a=+$('p_a').value; p.b=p.L-p.a; }
+  p.K=p.m/(p.L*p.L)*(p.a/p.k2-p.b/p.k1);
+  return p;
+}
+function tfAt(p,u){ // 状态方程严格推导：G(s)=ωr/δ=(B1 s+B0)/(s²+2ζω₀s+ω₀²)，δ=前轮转角(rad)
+  const a11=(p.k1+p.k2)/(p.m*u),
+        a12=(p.a*p.k1-p.b*p.k2)/(p.m*u*u)-1,
+        a21=(p.a*p.k1-p.b*p.k2)/p.Iz,
+        a22=(p.a*p.a*p.k1+p.b*p.b*p.k2)/(p.Iz*u),
+        e1=-p.k1/(p.m*u), e2=-p.a*p.k1/p.Iz;
+  const w0sq=a11*a22-a12*a21, tzw=-(a11+a22);
+  const stable=w0sq>0&&tzw>0;
+  return {a11,a12,a21,a22,e1,e2,w0sq,tzw,B1:e2,B0:a21*e1-a11*e2,
+          w0:stable?Math.sqrt(w0sq):NaN, zeta:stable?tzw/(2*Math.sqrt(w0sq)):NaN, stable,
+          gain:(u/p.L)/(1+p.K*u*u)};
+}
+// 二自由度方程 RK4 积分，deltaFn(t)→前轮转角(rad)，返回 {t,wr,beta}
+function simulate(p,u,deltaFn,T,dt){
+  const c=tfAt(p,u); const n=Math.ceil(T/dt);
+  const keep=Math.max(1,Math.floor(n/2400));
+  const t=[],wr=[],bt=[]; let b=0,w=0;
+  const f=(b_,w_,d)=>[c.a11*b_+c.a12*w_+c.e1*d, c.a21*b_+c.a22*w_+c.e2*d];
+  for(let i=0;i<=n;i++){
+    const ti=i*dt;
+    if(i%keep===0){t.push(ti);wr.push(w);bt.push(b);}
+    const d1=deltaFn(ti),d2=deltaFn(ti+dt/2),d3=deltaFn(ti+dt);
+    const k1=f(b,w,d1), k2=f(b+dt/2*k1[0],w+dt/2*k1[1],d2),
+          k3=f(b+dt/2*k2[0],w+dt/2*k2[1],d2), k4=f(b+dt*k3[0],w+dt*k3[1],d3);
+    b+=dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    w+=dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+  }
+  return {t,wr,beta:bt,c};
+}
+// 规范二阶系统 (B1 s+B0)/(s²+2ζω₀s+ω₀²) 的 RK4 积分（用于阻尼比对比）
+function simulate2nd(B1,B0,w0,zeta,deltaFn,T,dt){
+  const n=Math.ceil(T/dt), keep=Math.max(1,Math.floor(n/2400));
+  const t=[],y=[]; let x1=0,x2=0;
+  const f=(x1_,x2_,d)=>[x2_, -w0*w0*x1_-2*zeta*w0*x2_+d];
+  for(let i=0;i<=n;i++){
+    const ti=i*dt;
+    if(i%keep===0){t.push(ti);y.push(B0*x1+B1*x2);}
+    const d1=deltaFn(ti),d2=deltaFn(ti+dt/2),d3=deltaFn(ti+dt);
+    const k1=f(x1,x2,d1),k2=f(x1+dt/2*k1[0],x2+dt/2*k1[1],d2),
+          k3=f(x1+dt/2*k2[0],x2+dt/2*k2[1],d2),k4=f(x1+dt*k3[0],x2+dt*k3[1],d3);
+    x1+=dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    x2+=dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+  }
+  return {t,y};
+}
+// 阶跃响应指标（y、ss 同号即可）
+function stepMetrics(t,y,ss){
+  const s=Math.sign(ss)||1; let tau=NaN,eps=NaN,peak=NaN,sigma=NaN;
+  const yn=y.map(v=>v*s/Math.abs(ss));
+  for(let i=1;i<yn.length;i++){ if(yn[i]>=1){ // 线性插值
+      tau=t[i-1]+(t[i]-t[i-1])*(1-yn[i-1])/(yn[i]-yn[i-1]); break; } }
+  for(let i=1;i<yn.length-1;i++){ if(yn[i]>=yn[i-1]&&yn[i]>yn[i+1]&&yn[i]>1){ eps=t[i]; peak=yn[i]; break; } }
+  if(isNaN(peak)){ let m=-1e99,mi=0; for(let i=0;i<yn.length;i++)if(yn[i]>m){m=yn[i];mi=i;} peak=m; if(m>1)eps=t[mi]; }
+  let last=-1; for(let i=0;i<yn.length;i++) if(Math.abs(yn[i]-1)>0.05) last=i;
+  if(last<yn.length-1) sigma=(last<0)?0:t[last+1];
+  return {tau,eps,overshoot:(peak-1)*100,sigma};
+}
+function freqResp(c,w){ // 返回 {mag,phase(deg)}
+  const nr=c.B0, ni=c.B1*w, dr=c.w0sq-w*w, di=c.tzw*w;
+  const mag=Math.hypot(nr,ni)/Math.hypot(dr,di);
+  const ph=(Math.atan2(ni,nr)-Math.atan2(di,dr))*180/Math.PI;
+  return {mag,phase:ph};
+}
+/* ===================== 绘图库（Canvas，离线） ===================== */
+const plotRegistry={};
+function niceStep(raw){const e=Math.pow(10,Math.floor(Math.log10(raw)));const f=raw/e;
+  return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e;}
+function ticksFor(min,max,n=6){ if(min===max){min-=1;max+=1;}
+  const st=niceStep((max-min)/n), t0=Math.ceil(min/st)*st, arr=[];
+  for(let v=t0;v<=max+st*1e-9;v+=st)arr.push(Math.abs(v)<st*1e-9?0:v);
+  return arr;}
+function drawPlot(ctx,W,H,spec,S){ // S=缩放系数
+  const F=n=>n*S;
+  ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,W,H);
+  const ml=F(64),mr=F(18),mt=spec.title?F(34):F(16),mb=F(46);
+  const pw=W-ml-mr, ph=H-mt-mb;
+  // 数据范围
+  let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+  const tx=spec.xLog?(v=>Math.log10(v)):(v=>v);
+  spec.series.forEach(s=>{for(let i=0;i<s.x.length;i++){const xv=tx(s.x[i]);
+    if(isFinite(xv)){if(xv<xmin)xmin=xv;if(xv>xmax)xmax=xv;}
+    const yv=s.y[i]; if(isFinite(yv)){if(yv<ymin)ymin=yv;if(yv>ymax)ymax=yv;}}});
+  (spec.hLines||[]).forEach(h=>{if(h.y<ymin)ymin=h.y;if(h.y>ymax)ymax=h.y;});
+  if(!isFinite(xmin)){xmin=0;xmax=1;ymin=0;ymax=1;}
+  const yr=(ymax-ymin)||1; ymin-=yr*0.06; ymax+=yr*0.08;
+  if(spec.yZero&&ymin>0)ymin=0;
+  const X=v=>ml+(tx(v)-xmin)/(xmax-xmin)*pw, Y=v=>mt+ph-(v-ymin)/(ymax-ymin)*ph;
+  // 网格与坐标轴
+  ctx.strokeStyle='#E4E9ED';ctx.lineWidth=F(1);ctx.font=F(11.5)+'px Consolas,monospace';
+  ctx.fillStyle='#5B6B77';ctx.textAlign='center';ctx.textBaseline='top';
+  let xticks;
+  if(spec.xLog){ xticks=[];
+    for(let d=Math.floor(xmin);d<=Math.ceil(xmax);d++){ if(d>=xmin-1e-9&&d<=xmax+1e-9)xticks.push(d);
+      for(let m=2;m<10;m++){const v=d+Math.log10(m); if(v>=xmin&&v<=xmax){ // 次网格
+        ctx.beginPath();ctx.moveTo(ml+(v-xmin)/(xmax-xmin)*pw,mt);ctx.lineTo(ml+(v-xmin)/(xmax-xmin)*pw,mt+ph);ctx.strokeStyle='#F1F4F6';ctx.stroke();}}}
+    ctx.strokeStyle='#E4E9ED';
+    xticks.forEach(d=>{const px=ml+(d-xmin)/(xmax-xmin)*pw;
+      ctx.beginPath();ctx.moveTo(px,mt);ctx.lineTo(px,mt+ph);ctx.stroke();
+      const lab=d>=0?(''+Math.pow(10,d)):('10^'+d);
+      ctx.fillText(Math.abs(d)<=3?String(Math.pow(10,d)):lab,px,mt+ph+F(7));});
+  } else {
+    xticks=ticksFor(xmin,xmax,7);
+    xticks.forEach(v=>{const px=X(v);ctx.beginPath();ctx.moveTo(px,mt);ctx.lineTo(px,mt+ph);ctx.stroke();
+      ctx.fillText(fmt(v,4),px,mt+ph+F(7));});
+  }
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  ticksFor(ymin,ymax,6).forEach(v=>{const py=Y(v);ctx.beginPath();ctx.moveTo(ml,py);ctx.lineTo(ml+pw,py);ctx.stroke();
+    ctx.fillText(fmt(v,4),ml-F(8),py);});
+  ctx.strokeStyle='#8A99A6';ctx.lineWidth=F(1.2);ctx.strokeRect(ml,mt,pw,ph);
+  // 参考线
+  (spec.hLines||[]).forEach(h=>{ctx.save();ctx.strokeStyle=h.color||'#999';ctx.lineWidth=F(1.2);
+    ctx.setLineDash((h.dash||[5,4]).map(F));ctx.beginPath();ctx.moveTo(ml,Y(h.y));ctx.lineTo(ml+pw,Y(h.y));ctx.stroke();ctx.restore();});
+  (spec.vLines||[]).forEach(v=>{ctx.save();ctx.strokeStyle=v.color||'#999';ctx.lineWidth=F(1.2);
+    ctx.setLineDash((v.dash||[5,4]).map(F));const px=X(v.x);ctx.beginPath();ctx.moveTo(px,mt);ctx.lineTo(px,mt+ph);ctx.stroke();ctx.restore();});
+  // 曲线
+  ctx.save();ctx.beginPath();ctx.rect(ml,mt,pw,ph);ctx.clip();
+  spec.series.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=F(s.lw||2);
+    ctx.setLineDash((s.dash||[]).map(F));ctx.beginPath();let started=false;
+    for(let i=0;i<s.x.length;i++){const px=X(s.x[i]),py=Y(s.y[i]);
+      if(!isFinite(px)||!isFinite(py)){started=false;continue;}
+      if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);}
+    ctx.stroke();ctx.setLineDash([]);});
+  (spec.points||[]).forEach(pt=>{ctx.fillStyle=pt.color||'#D95F18';
+    ctx.beginPath();ctx.arc(X(pt.x),Y(pt.y),F(4),0,7);ctx.fill();
+    if(pt.text){ctx.font=F(11.5)+'px Consolas,monospace';ctx.textAlign='left';ctx.textBaseline='bottom';
+      ctx.fillText(pt.text,X(pt.x)+F(6),Y(pt.y)-F(4));}});
+  ctx.restore();
+  // 标题与轴标签
+  ctx.fillStyle='#1C2B36';ctx.font='600 '+F(13)+"px 'Segoe UI','Microsoft YaHei',sans-serif";
+  ctx.textAlign='center';ctx.textBaseline='top';
+  if(spec.title)ctx.fillText(spec.title,ml+pw/2,F(9));
+  ctx.font=F(12)+"px 'Segoe UI','Microsoft YaHei',sans-serif";ctx.fillStyle='#3A4B58';
+  ctx.textBaseline='bottom';ctx.fillText(spec.xLabel||'',ml+pw/2,H-F(8));
+  ctx.save();ctx.translate(F(14),mt+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText(spec.yLabel||'',0,0);ctx.restore();
+  // 图例
+  const legs=spec.series.filter(s=>s.label);
+  if(legs.length){ctx.font=F(11.5)+"px 'Segoe UI','Microsoft YaHei',sans-serif";
+    let lw2=0;legs.forEach(s=>lw2=Math.max(lw2,ctx.measureText(s.label).width));
+    const bw=lw2+F(42),bh=legs.length*F(18)+F(10);
+    const lx=(spec.legendPos==='right'?ml+pw-bw-F(10):ml+F(10)), ly=mt+F(8);
+    ctx.fillStyle='rgba(255,255,255,.92)';ctx.strokeStyle='#C9D2D9';ctx.lineWidth=F(1);
+    ctx.fillRect(lx,ly,bw,bh);ctx.strokeRect(lx,ly,bw,bh);
+    legs.forEach((s,i)=>{const yy=ly+F(14)+i*F(18);
+      ctx.strokeStyle=s.color;ctx.lineWidth=F(2.2);ctx.setLineDash((s.dash||[]).map(F));
+      ctx.beginPath();ctx.moveTo(lx+F(8),yy);ctx.lineTo(lx+F(30),yy);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#1C2B36';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(s.label,lx+F(36),yy);});}
+}
+function renderPlot(canvasId,spec){
+  plotRegistry[canvasId]=spec;
+  const cv=$(canvasId); if(!cv)return;
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||900, h=cv.clientHeight||340;
+  cv.width=w*dpr; cv.height=h*dpr;
+  drawPlot(cv.getContext('2d'),cv.width,cv.height,spec,dpr);
+}
+function downloadPlot(canvasId,name){
+  const spec=plotRegistry[canvasId]; if(!spec)return;
+  const W=1800,H=1080,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  drawPlot(cv.getContext('2d'),W,H,spec,2.1);
+  cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download=(name||canvasId)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png');
+}
+window.addEventListener('resize',()=>{document.querySelectorAll('.tab.on canvas').forEach(c=>{
+  if(plotRegistry[c.id])renderPlot(c.id,plotRegistry[c.id]);});});
+function figHTML(id,cap,fname){
+  return `<div class="fig"><div class="figbar"><span class="cap">${cap}</span>
+  <button onclick="downloadPlot('${id}','${fname}')">下载 PNG（可插入 Word）</button></div>
+  <canvas id="${id}"></canvas></div>`;
+}
+function ro(k,v,u,hl){return `<div class="ro${hl?' hl':''}"><div class="k">${k}</div><div class="v">${v}<span class="u">${u||''}</span></div></div>`;}
+/* ===================== 界面逻辑 ===================== */
+const PRESETS={
+  p55:{m:1700,Iz:3700,L:3.2,k1:-60000,k2:-110000,i:18,g:9.8,mode:'ratio',ratio:53.125,a:1.5},
+  book10:{m:2500,Iz:2800,L:2.4,k1:-51000,k2:-40000,i:20,g:9.8,mode:'a',ratio:48.83,a:1.228},
+  book10b:{m:2500,Iz:2800,L:2.4,k1:-41000,k2:-60000,i:20,g:9.8,mode:'a',ratio:48.83,a:1.228}
+};
+function loadPreset(k){const p=PRESETS[k];
+  $('p_m').value=p.m;$('p_Iz').value=p.Iz;$('p_L').value=p.L;$('p_k1').value=p.k1;$('p_k2').value=p.k2;
+  $('p_i').value=p.i;$('p_g').value=p.g;$('p_ratio').value=p.ratio;$('p_a').value=p.a;
+  document.querySelector(`input[name=geo][value=${p.mode}]`).checked=true;geoMode();showParamSummary();}
+function geoMode(){const m=document.querySelector('input[name=geo]:checked').value;
+  $('f_ratio').style.display=m==='ratio'?'':'none';$('f_a').style.display=m==='a'?'':'none';}
+function steerChar(K){return K>1e-9?'不足转向':(K<-1e-9?'过多转向':'中性转向');}
+function showParamSummary(){
+  const p=getParams();
+  let uinfo;
+  if(p.K>0)uinfo=ro('特征车速 u<sub>ch</sub>=√(1/K)',fmt(Math.sqrt(1/p.K)),'m/s = '+fmt(Math.sqrt(1/p.K)*3.6)+' km/h',true);
+  else if(p.K<0)uinfo=ro('临界车速 u<sub>cr</sub>=√(-1/K)',fmt(Math.sqrt(-1/p.K)),'m/s = '+fmt(Math.sqrt(-1/p.K)*3.6)+' km/h',true);
+  else uinfo=ro('特征/临界车速','—','');
+  $('psummary').innerHTML=`<div class="readouts">
+    ${ro('质心到前轴距离 a',fmt(p.a),'m')}${ro('质心到后轴距离 b',fmt(p.b),'m')}
+    ${ro('稳定性因数 K',fmt(p.K),'s²/m²',true)}${ro('稳态转向特性',steerChar(p.K),'',true)}${uinfo}
+  </div>
+  ${p.K<0?`<div class="warn">该组参数为<b>过多转向</b>：车速超过临界车速后系统不稳定（横摆角速度发散）。教材实例 10 原始参数（k₁=-51000、k₂=-40000）即属此类，其书中 u=30 m/s 得到稳定曲线是因为程序中 c 的表达式漏乘了车速 u；本工具按修正后的正确模型计算。</div>`:''}`;
+}
+</script>
+<script>
+/* ===================== ② 稳态特性与特征参数 ===================== */
+function calcSteady(){
+  const p=getParams(), g=p.g;
+  const u=+$('s_u').value, ayg=+$('s_ay').value, ay=ayg*g, R0=+$('s_R0').value,
+        ut=+$('s_ut').value, ub=+$('s_ub').value, umax=+$('s_umax').value;
+  const K=p.K;
+  // 稳态增益与灵敏度
+  const gain=v=>(v/p.L)/(1+K*v*v);
+  const sens=gain(u)/p.i;
+  // 静态储备系数
+  const ap=p.L*p.k2/(p.k1+p.k2), SM=(ap-p.a)/p.L;
+  // 侧偏角之差与转弯半径比
+  const dAlpha=K*p.L*ay;
+  const rden=1-K*ay*R0, RR0=rden>0?1/rden:NaN;
+  // 瞬态特征参数（车速 ut）
+  const ct=tfAt(p,ut); let tau=NaN,eps=NaN,ss=NaN,ov=NaN;
+  if(ct.stable){ const sim=simulate(p,ut,()=>1,Math.max(3,10/ct.w0/Math.max(ct.zeta,0.05)),0.0005);
+    ss=ct.B0/ct.w0sq; const m=stepMetrics(sim.t,sim.wr,ss); tau=m.tau;eps=m.eps;ov=m.overshoot; }
+  // 质心侧偏角（车速 ub、侧向加速度 ay）
+  const cb=tfAt(p,ub);
+  const den=1+K*ub*ub;
+  const betaGain=(p.b+p.m*p.a*ub*ub/(p.L*p.k2))/(p.L*den); // β/δ 稳态增益（无量纲）
+  const R=ub*ub/ay, delta=p.L/R*den, beta=betaGain*delta;
+  let epsB=NaN;
+  if(cb.stable){ const simB=simulate(p,ub,()=>1,Math.max(3,10/cb.w0/Math.max(cb.zeta,0.05)),0.0005);
+    epsB=stepMetrics(simB.t,simB.wr,cb.B0/cb.w0sq).eps; }
+  const TB=epsB*(beta*180/Math.PI);
+  // 特征/临界车速
+  const uch=K>0?Math.sqrt(1/K):NaN, ucr=K<0?Math.sqrt(-1/K):NaN;
+  // 增益曲线与数据表
+  const xs=[],ys=[]; for(let v=0.2;v<=umax;v+=umax/400){xs.push(v);ys.push(gain(v));}
+  const tabU=[0,5,10,15,20,25,30,35,40].filter(v=>v<=umax);
+  if(K>0&&uch<=umax)tabU.push(uch); if(u<=umax)tabU.push(u);
+  const tabList=[...new Set(tabU.map(v=>+v.toFixed(4)))].sort((a,b)=>a-b);
+  let rows=tabList.map((v,idx)=>`<tr><td>${idx+1}</td><td>${fmt(v)}</td><td>${fmt(v*3.6)}</td><td>${fmt(gain(v))}</td><td>${fmt(gain(v)/p.i)}</td></tr>`).join('');
+  const pts=[];
+  if(K>0&&uch<=umax)pts.push({x:uch,y:gain(uch),color:'#D95F18',text:'u_ch='+fmt(uch)+' m/s'});
+  if(u<=umax)pts.push({x:u,y:gain(u),color:'#1F8A5B',text:'u='+fmt(u)});
+  $('s_out').innerHTML=`
+  <div class="card"><h2><span class="no">A1</span>稳定性因数与特征车速</h2>
+    <div class="readouts">
+      ${ro('稳定性因数 K',fmt(K),'s²/m²',true)}
+      ${ro('稳态转向特性',steerChar(K),'',true)}
+      ${K>0?ro('特征车速 u<sub>ch</sub>',fmt(uch)+' m/s','= '+fmt(uch*3.6)+' km/h',true):(K<0?ro('临界车速 u<sub>cr</sub>',fmt(ucr)+' m/s','= '+fmt(ucr*3.6)+' km/h',true):'')}
+    </div>
+    <div class="formula">K = m/L² · (a/k₂ − b/k₁)　　u_ch = √(1/K)（不足转向）　u_cr = √(−1/K)（过多转向）</div>
+  </div>
+  <div class="card"><h2><span class="no">A2</span>稳态横摆角速度增益与转向灵敏度</h2>
+    <div class="readouts">
+      ${ro('u='+fmt(u)+' m/s 时增益 (ω<sub>r</sub>/δ)<sub>s</sub>',fmt(gain(u)),'1/s（前轮转角）')}
+      ${ro('转向灵敏度（转向盘）',fmt(sens),'1/s',true)}
+    </div>
+    <div class="formula">(ω_r/δ)_s = (u/L)/(1+Ku²)　　转向灵敏度 = (ω_r/δ)_s / i</div>
+    ${figHTML('cv_gain','图 A-1　稳态横摆角速度增益曲线','稳态横摆角速度增益曲线')}
+    <table class="dt"><tr><th>#</th><th>u (m/s)</th><th>u (km/h)</th><th>(ω<sub>r</sub>/δ)<sub>s</sub> (1/s)</th><th>转向灵敏度 (1/s)</th></tr>${rows}</table>
+  </div>
+  <div class="card"><h2><span class="no">A3</span>静态储备系数与转向半径特性（a<sub>y</sub>=${fmt(ayg)}g）</h2>
+    <div class="readouts">
+      ${ro('静态储备系数 S.M.',fmt(SM),'',true)}
+      ${ro('前后轮侧偏角之差 α₁−α₂',fmt(dAlpha),'rad = '+fmt(dAlpha*180/Math.PI)+'°')}
+      ${ro('转弯半径比 R/R₀（R₀='+fmt(R0)+' m）',fmt(RR0),'')}
+    </div>
+    <div class="formula">S.M. = a′/L − a/L，a′ = L·k₂/(k₁+k₂)　　α₁−α₂ = K·L·a_y　　R/R₀ = 1/(1 − K·a_y·R₀)</div>
+    ${isNaN(RR0)?'<div class="warn">1 − K·a_y·R₀ ≤ 0，该工况下过多转向车辆无稳定转向半径。</div>':''}
+  </div>
+  <div class="card"><h2><span class="no">A4</span>瞬态响应特征参数（u=${fmt(ut)} m/s）</h2>
+    ${ct.stable?`<div class="readouts">
+      ${ro('固有圆频率 ω₀',fmt(ct.w0),'rad/s = '+fmt(ct.w0/2/Math.PI)+' Hz',true)}
+      ${ro('阻尼比 ζ',fmt(ct.zeta),'',true)}
+      ${ro('反应时间 τ（首次达到稳态值）',fmt(tau),'s')}
+      ${ro('峰值反应时间 ε（首次到达峰值）',fmt(eps),'s')}
+      ${ro('超调量',fmt(ov),'%')}
+      ${ro('稳态横摆角速度增益 ω<sub>r0</sub>/δ',fmt(ss),'1/s')}
+    </div>
+    <div class="formula">ω₀² = (a₁₁a₂₂−a₁₂a₂₁)　2ζω₀ = −(a₁₁+a₂₂)　（由状态方程精确推导；τ、ε 由精确阶跃响应数值求解）</div>`
+    :'<div class="warn">该车速下系统不稳定（ω₀²≤0），无固有频率与阻尼比。</div>'}
+  </div>
+  <div class="card"><h2><span class="no">A5</span>稳态质心侧偏角与汽车因数 T.B.（u=${fmt(ub)} m/s，a<sub>y</sub>=${fmt(ayg)}g）</h2>
+    <div class="readouts">
+      ${ro('质心侧偏角增益 (β/δ)<sub>s</sub>',fmt(betaGain),'rad/rad')}
+      ${ro('所需前轮转角 δ',fmt(delta),'rad = '+fmt(delta*180/Math.PI)+'°')}
+      ${ro('质心侧偏角 β',fmt(beta),'rad = '+fmt(beta*180/Math.PI)+'°',true)}
+      ${ro('峰值反应时间 ε',fmt(epsB),'s')}
+      ${cb.stable?ro('ω₀ / ζ（u='+fmt(ub)+'）',fmt(cb.w0)+' / '+fmt(cb.zeta),'rad/s / —'):''}
+      ${ro('汽车因数 T.B. = ε·β(°)',fmt(TB),'s·(°)',true)}
+    </div>
+    <div class="formula">(β/δ)_s = [b + m·a·u²/(L·k₂)] / [L(1+Ku²)]　　δ = (L/R)(1+Ku²)，R = u²/a_y　　T.B. = ε × β（β 以度计）</div>
+  </div>`;
+  renderPlot('cv_gain',{title:'稳态横摆角速度增益曲线（前轮转角输入）',xLabel:'车速 u (m/s)',yLabel:'(ω_r/δ)_s (1/s)',yZero:true,
+    series:[{x:xs,y:ys,color:'#0F5FA8',label:'(ω_r/δ)_s'}],points:pts});
+}
+/* ===================== ③ 瞬态响应仿真 ===================== */
+function calcTrans(){
+  const p=getParams(), u=+$('d_u').value, dt=Math.max(1e-5,+$('d_dt').value);
+  const isSW=$('d_type').value==='sw', div=isSW?p.i:1;
+  const d0=+$('d_step').value*Math.PI/180/div, Ts=+$('d_Ts').value;
+  const sa=+$('d_samp').value*Math.PI/180/div, f=+$('d_f').value, Tn=+$('d_Tn').value;
+  const c=tfAt(p,u), R2D=180/Math.PI, lbl=isSW?'转向盘转角':'前轮转角';
+  if(!c.stable){
+    $('d_out').innerHTML=`<div class="card"><div class="warn">u=${fmt(u)} m/s 时系统不稳定（过多转向且超过临界车速 ${p.K<0?fmt(Math.sqrt(-1/p.K))+' m/s':''}），横摆角速度将发散，无法给出稳态响应。请降低车速或修改参数。</div></div>`;
+    return;
+  }
+  // 阶跃
+  const s1=simulate(p,u,()=>d0,Ts,dt), ss=c.B0/c.w0sq*d0;
+  const m1=stepMetrics(s1.t,s1.wr,ss);
+  // 正弦
+  const w=2*Math.PI*f, fr=freqResp(c,w);
+  const s2=simulate(p,u,t=>sa*Math.sin(w*t),Tn,dt);
+  const half=s2.wr.slice(Math.floor(s2.wr.length*0.6));
+  const ampSim=(Math.max(...half)-Math.min(...half))/2;
+  $('d_out').innerHTML=`
+  <div class="card"><h2><span class="no">B1</span>${lbl}阶跃输入响应（u=${fmt(u)} m/s，δ₀=${fmt(+$('d_step').value)}°）</h2>
+    <div class="readouts">
+      ${ro('固有圆频率 ω₀',fmt(c.w0),'rad/s',true)}${ro('阻尼比 ζ',fmt(c.zeta),'',true)}
+      ${ro('稳态横摆角速度 ω<sub>r0</sub>',fmt(ss*R2D),'°/s = '+fmt(ss)+' rad/s')}
+      ${ro('反应时间 τ',fmt(m1.tau),'s')}${ro('峰值反应时间 ε',fmt(m1.eps),'s')}
+      ${ro('超调量 σ',fmt(m1.overshoot),'%')}${ro('稳定时间（进入并保持 ±5%）',fmt(m1.sigma),'s')}
+    </div>
+    ${figHTML('cv_step','图 B-1　'+lbl+'阶跃输入下的横摆角速度响应','阶跃输入横摆角速度响应')}
+  </div>
+  <div class="card"><h2><span class="no">B2</span>${lbl}正弦输入响应（幅值 ${fmt(+$('d_samp').value)}°，f=${fmt(f)} Hz）</h2>
+    <div class="readouts">
+      ${ro('该频率幅频特性 |G(jω)|',fmt(fr.mag),'1/s（前轮角→ω_r）')}
+      ${ro('相频特性 ∠G(jω)',fmt(fr.phase),'°')}
+      ${ro('横摆角速度稳态幅值（理论）',fmt(fr.mag*sa*R2D),'°/s')}
+      ${ro('横摆角速度稳态幅值（仿真）',fmt(ampSim*R2D),'°/s',true)}
+    </div>
+    ${figHTML('cv_sine','图 B-2　'+lbl+'正弦输入下的横摆角速度响应','正弦输入横摆角速度响应')}
+  </div>`;
+  renderPlot('cv_step',{title:'角阶跃输入下的横摆角速度响应（u='+fmt(u)+' m/s）',
+    xLabel:'时间 t (s)',yLabel:'横摆角速度 ω_r (°/s)',yZero:true,
+    series:[{x:s1.t,y:s1.wr.map(v=>v*R2D),color:'#0F5FA8',label:'ω_r(t)'}],
+    hLines:[{y:ss*R2D,color:'#8A99A6',dash:[6,4]},{y:1.05*ss*R2D,color:'#C9A24B',dash:[3,4]},{y:0.95*ss*R2D,color:'#C9A24B',dash:[3,4]}]});
+  renderPlot('cv_sine',{title:'正弦输入下的横摆角速度响应（f='+fmt(f)+' Hz，u='+fmt(u)+' m/s）',
+    xLabel:'时间 t (s)',yLabel:'ω_r (°/s)　/　前轮转角 δ (°)',
+    series:[{x:s2.t,y:s2.wr.map(v=>v*R2D),color:'#0F5FA8',label:'ω_r(t) (°/s)'},
+            {x:s2.t,y:s2.t.map(t=>sa*Math.sin(w*t)*R2D),color:'#B0653A',dash:[6,4],lw:1.6,label:'前轮转角输入 δ(t) (°)'}],
+    legendPos:'right'});
+}
+/* ===================== ④ 频率特性与稳定裕度 ===================== */
+function calcFreq(){
+  const p=getParams(), u=+$('q_u').value;
+  let w1=Math.max(1e-4,+$('q_w1').value), w2=+$('q_w2').value;
+  if(w2<=w1)w2=w1*1000;
+  const c=tfAt(p,u);
+  if(!c.stable){$('q_out').innerHTML=`<div class="card"><div class="warn">u=${fmt(u)} m/s 时系统不稳定（ω₀²≤0），开环 Bode 分析不适用。请降低车速或修改参数。</div></div>`;return;}
+  const N=1200, lw1=Math.log10(w1), lw2=Math.log10(w2);
+  const ws=[],mags=[],phs=[];
+  for(let i=0;i<=N;i++){const w=Math.pow(10,lw1+(lw2-lw1)*i/N);
+    const r=freqResp(c,w); ws.push(w); mags.push(20*Math.log10(r.mag)); phs.push(r.phase);}
+  // 幅值穿越频率（0 dB）与相位裕度
+  let wc=NaN,PM=NaN;
+  for(let i=1;i<=N;i++){ if((mags[i-1]>=0)!==(mags[i]>=0)){
+    const t=(0-mags[i-1])/(mags[i]-mags[i-1]);
+    wc=Math.pow(10,Math.log10(ws[i-1])+t*(Math.log10(ws[i])-Math.log10(ws[i-1])));
+    PM=180+(phs[i-1]+t*(phs[i]-phs[i-1])); break; } }
+  // 相位穿越频率（-180°）与幅值裕度
+  let wg=NaN,GM=NaN;
+  for(let i=1;i<=N;i++){ if((phs[i-1]>-180)!==(phs[i]>-180)){
+    const t=(-180-phs[i-1])/(phs[i]-phs[i-1]);
+    wg=Math.pow(10,Math.log10(ws[i-1])+t*(Math.log10(ws[i])-Math.log10(ws[i-1])));
+    GM=-(mags[i-1]+t*(mags[i]-mags[i-1])); break; } }
+  const dc=c.B0/c.w0sq;
+  $('q_out').innerHTML=`
+  <div class="card"><h2><span class="no">C1</span>稳定裕度（u=${fmt(u)} m/s，前轮转角 → 横摆角速度）</h2>
+    <div class="readouts">
+      ${ro('低频（稳态）增益',fmt(dc),'1/s = '+fmt(20*Math.log10(Math.abs(dc)))+' dB')}
+      ${ro('幅值穿越频率 ω<sub>c</sub>（|G|=0 dB）',isNaN(wc)?'不存在':fmt(wc),isNaN(wc)?'':'rad/s',true)}
+      ${ro('相位裕度 γ = 180°+∠G(jω<sub>c</sub>)',isNaN(PM)?'—':fmt(PM),isNaN(PM)?'':'°',true)}
+      ${ro('相位穿越频率 ω<sub>g</sub>（∠G=−180°）',isNaN(wg)?'不存在':fmt(wg),isNaN(wg)?'':'rad/s')}
+      ${ro('幅值裕度 GM',isNaN(GM)?'∞':fmt(GM),isNaN(GM)?'（相位恒大于 −180°）':'dB')}
+    </div>
+    <div class="warn" style="background:#F2F6FA;border-color:#B9CFE2;color:#2B4A63">说明：该二自由度系统 G(s)=(B₁s+B₀)/(s²+2ζω₀s+ω₀²) 为最小相位系统，相位在 −90°~0° 范围内变化、永不穿越 −180°，故相位穿越频率不存在、幅值裕度为无穷大；相位裕度在幅值穿越频率处求得。若低频增益小于 0 dB，则幅值穿越频率也不存在。</div>
+    ${figHTML('cv_bmag','图 C-1　幅频特性（对数坐标）','幅频特性')}
+    ${figHTML('cv_bph','图 C-2　相频特性（对数坐标）','相频特性')}
+  </div>`;
+  const vl=[],pts=[];
+  if(!isNaN(wc)){vl.push({x:wc,color:'#D95F18',dash:[5,4]});}
+  renderPlot('cv_bmag',{title:'幅频特性 20lg|G(jω)|（u='+fmt(u)+' m/s）',xLabel:'频率 ω (rad/s)',yLabel:'幅值 (dB)',xLog:true,
+    series:[{x:ws,y:mags,color:'#0F5FA8',label:'20lg|G|'}],
+    hLines:[{y:0,color:'#8A99A6',dash:[6,4]}],vLines:vl,
+    points:isNaN(wc)?[]:[{x:wc,y:0,color:'#D95F18',text:'ω_c='+fmt(wc)+' rad/s'}]});
+  renderPlot('cv_bph',{title:'相频特性 ∠G(jω)（u='+fmt(u)+' m/s）',xLabel:'频率 ω (rad/s)',yLabel:'相位 (°)',xLog:true,
+    series:[{x:ws,y:phs,color:'#0F5FA8',label:'∠G'}],
+    hLines:[{y:-180,color:'#8A99A6',dash:[6,4]}],vLines:vl,
+    points:isNaN(PM)?[]:[{x:wc,y:PM-180,color:'#D95F18',text:'γ='+fmt(PM)+'°'}]});
+}
+/* ===================== ⑤ 阻尼比对比 ===================== */
+function calcZeta(){
+  const p=getParams(), u=+$('z_u').value;
+  const zl=$('z_list').value.split(/[,，;；\s]+/).map(Number).filter(v=>isFinite(v)&&v>0);
+  const isSW=$('z_type').value==='sw', div=isSW?p.i:1, lbl=isSW?'转向盘转角':'前轮转角';
+  const d0=+$('z_step').value*Math.PI/180/div, Ts=+$('z_Ts').value;
+  const sa=+$('z_samp').value*Math.PI/180/div, f=+$('z_f').value, Tn=+$('z_Tn').value, w=2*Math.PI*f;
+  const c=tfAt(p,u), R2D=180/Math.PI;
+  if(!c.stable){$('z_out').innerHTML=`<div class="card"><div class="warn">u=${fmt(u)} m/s 时系统不稳定（ω₀²≤0），无法定义固有频率进行阻尼比对比。请降低车速或修改参数。</div></div>`;return;}
+  if(!zl.length){$('z_out').innerHTML='<div class="card"><div class="warn">请至少输入一个有效的阻尼比。</div></div>';return;}
+  const colors=['#0F5FA8','#D95F18','#1F8A5B','#7A4FA3','#B0322F','#8A6D00'];
+  const dashes=[[],[8,5],[2,4],[10,3,3,3],[5,2],[1,3]];
+  const ss=c.B0/c.w0sq*d0;
+  const stepSeries=[],sineSeries=[]; let rows='';
+  zl.forEach((z,i)=>{
+    const dt=Math.min(0.001,0.02/c.w0);
+    const s1=simulate2nd(c.B1,c.B0,c.w0,z,()=>d0,Ts,dt);
+    const m=stepMetrics(s1.t,s1.y,ss);
+    stepSeries.push({x:s1.t,y:s1.y.map(v=>v*R2D),color:colors[i%6],dash:dashes[i%6],label:'ζ='+z});
+    const s2=simulate2nd(c.B1,c.B0,c.w0,z,t=>sa*Math.sin(w*t),Tn,dt);
+    sineSeries.push({x:s2.t,y:s2.y.map(v=>v*R2D),color:colors[i%6],dash:dashes[i%6],label:'ζ='+z});
+    // 正弦稳态幅值（理论）
+    const nr=c.B0,ni=c.B1*w, dr=c.w0*c.w0-w*w, di=2*z*c.w0*w;
+    const mg=Math.hypot(nr,ni)/Math.hypot(dr,di);
+    rows+=`<tr><td>${fmt(z)}</td><td>${fmt(m.tau)}</td><td>${fmt(m.eps)}</td><td>${fmt(Math.max(0,m.overshoot))}</td><td>${fmt(m.sigma)}</td><td>${fmt(mg*sa*R2D)}</td></tr>`;
+  });
+  $('z_out').innerHTML=`
+  <div class="card"><h2><span class="no">D1</span>对比结果（u=${fmt(u)} m/s，ω₀=${fmt(c.w0)} rad/s 保持不变，原车 ζ=${fmt(c.zeta)}）</h2>
+    <table class="dt"><tr><th>阻尼比 ζ</th><th>反应时间 τ (s)</th><th>峰值时间 ε (s)</th><th>超调量 (%)</th><th>稳定时间 ±5% (s)</th><th>正弦稳态幅值 (°/s)</th></tr>${rows}</table>
+    ${figHTML('cv_zstep','图 D-1　不同阻尼比对'+lbl+'阶跃响应的影响','不同阻尼比阶跃响应对比')}
+    ${figHTML('cv_zsine','图 D-2　不同阻尼比对'+lbl+'正弦输入响应的影响','不同阻尼比正弦响应对比')}
+    <div class="note">规律：阻尼比 ζ 增大，超调量减小、振荡减弱，响应趋于平稳并更快进入稳态误差带；ζ 过大则响应变得迟缓。三种阻尼比下最终都收敛于同一稳态值（阶跃）或同一稳态幅值附近（正弦，幅值随 ζ 略有变化）。</div>
+  </div>`;
+  renderPlot('cv_zstep',{title:'不同阻尼比对角阶跃响应的影响（u='+fmt(u)+' m/s）',
+    xLabel:'时间 t (s)',yLabel:'横摆角速度 ω_r (°/s)',yZero:true,
+    series:stepSeries,hLines:[{y:ss*R2D,color:'#8A99A6',dash:[6,4]}],legendPos:'right'});
+  renderPlot('cv_zsine',{title:'不同阻尼比对正弦输入响应的影响（f='+fmt(f)+' Hz，u='+fmt(u)+' m/s）',
+    xLabel:'时间 t (s)',yLabel:'横摆角速度 ω_r (°/s)',series:sineSeries,legendPos:'right'});
+}
+/* ===================== 导航 ===================== */
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); $(b.dataset.t).classList.add('on');
+  const auto={t2:calcSteady,t3:calcTrans,t4:calcFreq,t5:calcZeta};
+  if(auto[b.dataset.t])auto[b.dataset.t]();
+}));
+showParamSummary();
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+</body>
+</html>
